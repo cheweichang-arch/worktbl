@@ -28,11 +28,13 @@
   .mode-group { display: flex; flex-direction: column; gap: 6px; }
   .mode-btn { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r); background: var(--bg); color: var(--muted); font-size: 13px; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 9px; transition: all .12s; line-height: 1.3; }
   .mode-btn:hover { border-color: var(--border-dark); color: var(--text); background: var(--surface); }
-  .mode-btn.act-surplus { border-color: var(--purple-l); background: var(--purple-bg); color: var(--purple); font-weight: 500; }
-  .mode-btn.act-going   { border-color: var(--blue); background: var(--blue-bg); color: var(--blue); font-weight: 500; }
+  .mode-btn.act-surplus  { border-color: var(--purple-l); background: var(--purple-bg); color: var(--purple); font-weight: 500; }
+  .mode-btn.act-going    { border-color: var(--blue); background: var(--blue-bg); color: var(--blue); font-weight: 500; }
+  .mode-btn.act-onshift  { border-color: var(--green); background: var(--green-bg); color: var(--green); font-weight: 500; }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .d-purple { background: var(--purple-l); }
   .d-blue   { background: var(--blue); }
+  .d-green  { background: var(--green); }
   .divider { border: none; border-top: 1px solid var(--border); }
   .btn-query { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: var(--r); font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .12s; margin-top: auto; }
   .btn-query:hover { opacity: .87; }
@@ -102,6 +104,10 @@
           <span class="dot d-blue"></span>
           <span>支援他店<br><span style="font-size:11px;font-weight:400;opacity:.75">當天被派去支援的人員</span></span>
         </button>
+        <button class="mode-btn" id="btn-onshift" onclick="setMode('onshift')">
+          <span class="dot d-green"></span>
+          <span>當天上班人員<br><span style="font-size:11px;font-weight:400;opacity:.75">全部門市今日上班名單</span></span>
+        </button>
       </div>
     </div>
     <button class="btn-query" onclick="query()">查詢</button>
@@ -152,6 +158,8 @@ function setMode(m) {
     'mode-btn' + (m === 'surplus' ? ' act-surplus' : '');
   document.getElementById('btn-going').className =
     'mode-btn' + (m === 'going' ? ' act-going' : '');
+  document.getElementById('btn-onshift').className =
+    'mode-btn' + (m === 'onshift' ? ' act-onshift' : '');
 }
 
 // 空白 = 上班可支援；有任何非空字元 = 無法支援
@@ -238,6 +246,47 @@ function query() {
     });
 
     mainEl.innerHTML = html;
+    return;
+  }
+
+  // ── 當天上班人員模式 ───────────────────────────
+  if (currentMode === 'onshift') {
+    var result3 = [];
+    storeNames.forEach(function(name) {
+      var emps = DATA.stores[name] || [];
+      var on = emps.filter(function(e) { return isAvailable(e.days[day]); });
+      if (on.length) result3.push({ name: name, on: on });
+    });
+
+    if (!result3.length) {
+      mainEl.innerHTML =
+        '<div class="empty-state"><div class="empty-icon">🔍</div>' +
+        '<div class="empty-title">今日無人員上班</div>' +
+        '<div class="empty-sub">' + dLabel + '</div></div>';
+      return;
+    }
+
+    var totalOn = result3.reduce(function(s, r) { return s + r.on.length; }, 0);
+    var html3 =
+      '<div class="result-bar">' +
+        '<span class="result-title">' + dLabel + '</span>' +
+        '<span class="result-sub">上班共 ' + totalOn + ' 人</span>' +
+      '</div>';
+
+    result3.forEach(function(r) {
+      html3 += '<div class="store-block">' +
+        '<div class="store-head sh-surplus">' +
+          '<span class="sh-name">' + r.name + '</span>' +
+          '<span class="pill pill-purple">上班 ' + r.on.length + ' 人</span>' +
+        '</div>' +
+        '<div class="emp-list">';
+      r.on.forEach(function(emp) {
+        html3 += empCard(emp, '<span class="tag tag-ok">上班中</span>');
+      });
+      html3 += '</div></div>';
+    });
+
+    mainEl.innerHTML = html3;
     return;
   }
 
